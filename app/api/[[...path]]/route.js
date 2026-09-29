@@ -929,7 +929,8 @@ async function handleRoute(request, { params }) {
     }
 
     if (route === '/links' && method === 'POST') {
-      const { title, slug, originalUrl, posterUrl, sources, subtitles } = await request.json();
+      const body = await request.json();
+      const { title, slug, originalUrl, posterUrl, sources, subtitles } = body;
 
       if (!title || !originalUrl || !sources || sources.length === 0) {
         return handleCORS(NextResponse.json({ error: "Title, Original URL, and Stream sources are required" }, { status: 400 }));
@@ -943,6 +944,8 @@ async function handleRoute(request, { params }) {
       }
 
       const hostType = detectProvider(originalUrl);
+      const linkType = body.type || (sources[0]?.type === 'embed' ? 'embed' : 'video');
+      const linkEmbedUrl = body.embedUrl || (linkType === 'embed' ? sources[0]?.file : '') || '';
 
       const formattedSubtitles = Array.isArray(subtitles) ? subtitles.map(s => ({
         label: (s.label || '').trim(),
@@ -958,6 +961,8 @@ async function handleRoute(request, { params }) {
         sources,
         subtitles: formattedSubtitles,
         hostType,
+        type: linkType,
+        embedUrl: linkEmbedUrl,
         createdAt: new Date(),
         updatedAt: new Date()
       };
@@ -987,7 +992,8 @@ async function handleRoute(request, { params }) {
       }
 
       if (method === 'PUT') {
-        const { title, slug, originalUrl, posterUrl, sources, subtitles } = await request.json();
+        const body = await request.json();
+        const { title, slug, originalUrl, posterUrl, sources, subtitles } = body;
 
         if (!title || !originalUrl || !sources || sources.length === 0) {
           return handleCORS(NextResponse.json({ error: "Title, Original URL, and Stream sources are required" }, { status: 400 }));
@@ -1003,6 +1009,8 @@ async function handleRoute(request, { params }) {
         }
 
         const hostType = detectProvider(originalUrl);
+        const linkType = body.type || link.type || (sources[0]?.type === 'embed' ? 'embed' : 'video');
+        const linkEmbedUrl = body.embedUrl || link.embedUrl || (linkType === 'embed' ? sources[0]?.file : '') || '';
 
         const formattedSubtitles = Array.isArray(subtitles) ? subtitles.map(s => ({
           label: (s.label || '').trim(),
@@ -1018,6 +1026,8 @@ async function handleRoute(request, { params }) {
           sources,
           subtitles: formattedSubtitles,
           hostType,
+          type: linkType,
+          embedUrl: linkEmbedUrl,
           updatedAt: new Date()
         };
 

@@ -23,6 +23,8 @@ export default function NewLinkPage() {
   const [originalUrl, setOriginalUrl] = useState('');
   const [posterUrl, setPosterUrl] = useState('');
   const [sources, setSources] = useState([]);
+  const [resultType, setResultType] = useState('video');
+  const [embedUrl, setEmbedUrl] = useState('');
   
   // Dynamic Subtitles State
   const [subtitles, setSubtitles] = useState([]);
@@ -103,6 +105,8 @@ export default function NewLinkPage() {
           setPosterUrl(data.posterUrl);
         }
         setSources(data.sources || []);
+        setResultType(data.type || (data.sources?.[0]?.type === 'embed' ? 'embed' : 'video'));
+        setEmbedUrl(data.embedUrl || '');
         
         if (data.sources && data.sources.length > 0) {
           const firstLabel = data.sources[0].label.replace(/[^0-9]/g, '');
@@ -113,7 +117,9 @@ export default function NewLinkPage() {
 
         toast({
           title: 'Parsing Berhasil!',
-          description: `Ditemukan ${data.sources?.length || 0} stream video dan tautan unduhan langsung siap digunakan.`,
+          description: data.type === 'embed' 
+            ? 'Player embed berhasil dideteksi dan siap disematkan.'
+            : `Ditemukan ${data.sources?.length || 0} stream video dan tautan unduhan langsung siap digunakan.`,
         });
       } else {
         toast({
@@ -295,6 +301,8 @@ export default function NewLinkPage() {
           posterUrl,
           sources,
           subtitles: validSubtitles,
+          type: resultType,
+          embedUrl: embedUrl || (sources[0]?.type === 'embed' ? sources[0].file : '')
         }),
       });
 

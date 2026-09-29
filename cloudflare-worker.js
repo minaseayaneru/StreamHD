@@ -242,6 +242,23 @@ async function handleProxyStreamWithRecovery(request, decodedTargetUrl, host, co
   } else if (host === "sibnet") {
     headers.set("Referer", "https://video.sibnet.ru/");
     headers.set("Origin", "https://video.sibnet.ru");
+  } else if (host === "streamtape") {
+    headers.set("Referer", "https://streamtape.com/");
+    headers.set("Origin", "https://streamtape.com");
+  } else if (host === "doodstream" || host === "dood") {
+    headers.set("Referer", "https://doodstream.com/");
+  } else if (host === "lulustream" || host === "lulust") {
+    headers.set("Referer", "https://lulustream.com/");
+  } else if (host === "vidara") {
+    headers.set("Referer", "https://vidara.so/");
+  } else if (host === "mp4upload") {
+    headers.set("Referer", "https://www.mp4upload.com/");
+  } else if (host === "turboviplay") {
+    headers.set("Referer", "https://turboviplay.com/");
+  } else if (host === "turbonewvid") {
+    headers.set("Referer", "https://turbonewvid.com/");
+  } else if (host === "fc2stream") {
+    headers.set("Referer", "https://fc2stream.tv/");
   }
 
   const range = request.headers.get("range");

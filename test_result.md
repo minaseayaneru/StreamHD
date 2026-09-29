@@ -447,3 +447,32 @@ backend_test_result_latest:
 agent_communication:
   - agent: "testing"
     message: "Backend-only verification complete against the configured public URL and live Turso database. 23/23 assertions passed; no critical backend issues found. No frontend testing performed."
+
+
+  - agent: "main"
+    message: "Updated parser resolver with full classification support: type='video' (for genuine direct streams) and type='embed' (for embed/iframe player pages), plus Cloudflare Worker 307 CDN bypass on stream/download routes. Re-running backend API verification."
+
+
+# Backend testing update - comprehensive provider resolver verification
+backend:
+  - task: "All requested parse providers, links, stats, auth, settings, parse-stream, and subtitle APIs"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js; app/lib/parser.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Executed /app/backend_test.py against configured NEXT_PUBLIC_BASE_URL: 33/33 assertions passed. Verified all Streamtape variants, TurboNewVid variants, FC2Stream variants, LuluStream/Lulust, Doodstream, Vidara, MP4Upload, TurboViPlay, VK Video, OK.ru, and Sibnet parsing with expected provider/type and embedUrl or sources. Links POST/GET/get-by-id/delete, parse-stream, stats/dashboard stats, auth login/session/logout, settings GET and all POST variants, and subtitle proxy all passed."
+
+agent_communication:
+  - agent: "testing"
+    message: "Backend-only verification complete: 33/33 passed against the configured public URL. Initial placeholder OK.ru/Sibnet IDs were invalid by provider format; rerun with realistic numeric IDs passed. No critical backend issues found; no frontend testing performed."
+
+backend_test_result_final:
+  executed_at: "2026-02-08"
+  script: "/app/backend_test.py"
+  result: "33/33 passed"
+  coverage: "All review-requested provider resolver variants, CRUD links, stats endpoints, parse-stream, auth lifecycle, settings, and subtitle proxy"

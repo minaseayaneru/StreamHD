@@ -268,6 +268,23 @@ async function streamDownloadWithRecovery(request, decodedTargetUrl, hostType, f
   } else if (hostType === "sibnet") {
     headers.set("Referer", "https://video.sibnet.ru/");
     headers.set("Origin", "https://video.sibnet.ru");
+  } else if (hostType === "streamtape") {
+    headers.set("Referer", "https://streamtape.com/");
+    headers.set("Origin", "https://streamtape.com");
+  } else if (hostType === "doodstream" || hostType === "dood") {
+    headers.set("Referer", "https://doodstream.com/");
+  } else if (hostType === "lulustream" || hostType === "lulust") {
+    headers.set("Referer", "https://lulustream.com/");
+  } else if (hostType === "vidara") {
+    headers.set("Referer", "https://vidara.so/");
+  } else if (hostType === "mp4upload") {
+    headers.set("Referer", "https://www.mp4upload.com/");
+  } else if (hostType === "turboviplay") {
+    headers.set("Referer", "https://turboviplay.com/");
+  } else if (hostType === "turbonewvid") {
+    headers.set("Referer", "https://turbonewvid.com/");
+  } else if (hostType === "fc2stream") {
+    headers.set("Referer", "https://fc2stream.tv/");
   }
 
   const range = request.headers.get("range");
