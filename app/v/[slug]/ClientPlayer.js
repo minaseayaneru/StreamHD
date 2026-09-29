@@ -838,25 +838,6 @@ export default function ClientPlayer({
 
   const activeSourceFile = sources?.[0]?.file ? getCdnStreamUrl(sources[0].file) : '';
 
-  const isEmbed = 
-    videoData?.type === 'embed' ||
-    video?.type === 'embed' ||
-    sources[0]?.type === 'embed' ||
-    sources[0]?.type === 'iframe' ||
-    (sources[0]?.file && !sources[0]?.file.startsWith('/api/stream') && !sources[0]?.file.includes('?url=') && (
-      sources[0]?.file.includes('streamtape.com') ||
-      sources[0]?.file.includes('turbonewvid.com') ||
-      sources[0]?.file.includes('fc2stream.tv') ||
-      sources[0]?.file.includes('lulustream.com') ||
-      sources[0]?.file.includes('lulust.com') ||
-      sources[0]?.file.includes('doodstream.com') ||
-      sources[0]?.file.includes('vidara.so') ||
-      sources[0]?.file.includes('turboviplay.com') ||
-      sources[0]?.file.includes('mp4upload.com')
-    ));
-
-  const embedSrc = videoData?.embedUrl || video?.embedUrl || (isEmbed ? sources[0]?.file : '') || '';
-
   // Trigger Popup Ads & Unmute
   const triggerPopupAd = useCallback((ad) => {
     if (!ad || !ad.popupUrl || triggeredPopupsRef.current.has(ad.id)) return;
@@ -894,16 +875,20 @@ export default function ClientPlayer({
   // INISIALISASI PEMUTAR VIDEO (JW PLAYER & VIDEO.JS DENGAN SMART TV SUPPORT)
   // =========================================================================
   useEffect(() => {
-    if (initializedRef.current || !scriptsReady || !activeSourceFile || isEmbed) return;
+    if (initializedRef.current || !scriptsReady || !activeSourceFile) return;
 
     // A. JW PLAYER SETUP
     if (playerEngine === 'jwplayer' && window.jwplayer && jwContainerRef.current) {
       try {
-        const jwSources = sources.map(s => ({
-          file: getCdnStreamUrl(s.file),
-          label: s.label,
-          type: s.type || 'mp4'
-        }));
+        const jwSources = sources.map(s => {
+          const streamUrl = getCdnStreamUrl(s.file);
+          const isHls = streamUrl.includes('.m3u8') || s.type?.includes('mpegURL') || s.type?.includes('hls');
+          return {
+            file: streamUrl,
+            label: s.label,
+            type: isHls ? 'hls' : 'mp4'
+          };
+        });
 
         const player = window.jwplayer(jwContainerRef.current).setup({
           playlist: [{
@@ -1001,6 +986,16 @@ export default function ClientPlayer({
     // B. VIDEO.JS SETUP
     if (videoRef.current && window.videojs) {
       try {
+        const vjsSources = sources.map(s => {
+          const streamUrl = getCdnStreamUrl(s.file);
+          const isHls = streamUrl.includes('.m3u8') || s.type?.includes('mpegURL') || s.type?.includes('hls');
+          return {
+            src: streamUrl,
+            type: isHls ? 'application/x-mpegURL' : 'video/mp4',
+            label: s.label
+          };
+        });
+
         const player = window.videojs(videoRef.current, {
           autoplay: autoplay ? true : false,
           muted: false,
@@ -1013,7 +1008,7 @@ export default function ClientPlayer({
             hotkeys: true
           },
           poster: videoData?.posterUrl || '',
-          sources: [{ type: 'video/mp4', src: activeSourceFile }]
+          sources: vjsSources.length > 0 ? vjsSources : [{ type: 'video/mp4', src: activeSourceFile }]
         });
 
         videoPlayerRef.current = player;
@@ -1151,18 +1146,7 @@ export default function ClientPlayer({
       `}} />
 
       <div className="w-full h-full relative">
-        {isEmbed ? (
-          <div className="w-full h-full flex items-center justify-center bg-black">
-            <iframe
-              src={embedSrc}
-              className="w-full h-full border-0 absolute inset-0"
-              allowFullScreen
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              title={videoData?.title || 'Video Player'}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-popups"
-            />
-          </div>
-        ) : playerEngine !== 'jwplayer' ? (
+        {playerEngine !== 'jwplayer' && (
           <div data-vjs-player className="w-full h-full">
             <video
               ref={videoRef}
@@ -1183,7 +1167,9 @@ export default function ClientPlayer({
               ))}
             </video>
           </div>
-        ) : (
+        )}
+
+        {playerEngine === 'jwplayer' && (
           <div className="w-full h-full flex items-center justify-center">
             <div ref={jwContainerRef} id="jwplayer-container" className="w-full h-full" />
           </div>

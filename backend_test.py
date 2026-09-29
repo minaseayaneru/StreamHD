@@ -12,7 +12,7 @@ def check(name, method, path, validator=None, expected=None, **kwargs):
     except Exception as e: results.append(False); print('FAIL',name,'EXCEPTION',repr(e)); return None,None
 
 def parse(name,url,provider):
-    return check(name,'POST','/parse',lambda b,r:isinstance(b,dict) and b.get('success') is True and b.get('hostType')==provider and b.get('type') in ('embed','video') and (bool(b.get('embedUrl')) or bool(b.get('sources'))),json={'url':url})
+    return check(name,'POST','/parse',lambda b,r:isinstance(b,dict) and b.get('success') is True and b.get('hostType')==provider and isinstance(b.get('sources'),list) and len(b['sources'])>0 and all(isinstance(x,dict) and isinstance(x.get('file'),str) and x['file'].startswith('/api/stream') and isinstance(x.get('label'),str) and len(x['label'].strip())>0 and isinstance(x.get('type'),str) and len(x['type'].strip())>0 for x in b['sources']),json={'url':url})
 
 cases=[
 ('streamtape e','https://streamtape.com/e/test_streamtape_id','streamtape'),('streamtape v','https://streamtape.com/v/test_streamtape_id','streamtape'),('streamtape url','https://streamtape.com/test_streamtape_id','streamtape'),

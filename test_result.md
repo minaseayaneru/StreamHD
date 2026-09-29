@@ -450,6 +450,10 @@ agent_communication:
 
 
   - agent: "main"
+    message: "Updated all provider resolvers (Doodstream, Lulust/Lulustream, Vidara, MP4Upload, TurboViplay, TurboNewVid, FC2Stream, Streamtape, VK, OK, Sibnet) to deliver native direct streaming sources connected directly to JW Player & Video.js. Re-testing backend APIs."
+
+
+  - agent: "main"
     message: "Updated parser resolver with full classification support: type='video' (for genuine direct streams) and type='embed' (for embed/iframe player pages), plus Cloudflare Worker 307 CDN bypass on stream/download routes. Re-running backend API verification."
 
 
@@ -476,3 +480,28 @@ backend_test_result_final:
   script: "/app/backend_test.py"
   result: "33/33 passed"
   coverage: "All review-requested provider resolver variants, CRUD links, stats endpoints, parse-stream, auth lifecycle, settings, and subtitle proxy"
+
+
+# Backend testing update - native JW Player / Video.js resolver verification
+backend:
+  - task: "All requested parse providers, links, stats, auth, settings, parse-stream, and native streaming sources"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js; app/lib/parser.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Executed /app/backend_test.py against configured NEXT_PUBLIC_BASE_URL: 33/33 assertions passed. Verified Streamtape e/v/root, TurboNewVid variants, FC2Stream variants, LuluStream/Lulustream, Doodstream, Vidara, MP4Upload, TurboViPlay, VK Video, OK.ru, and Sibnet. Every parser response returned non-empty sources whose files use /api/stream endpoints with non-empty media labels/types. Links create/list/get/delete, parse-stream, stats/dashboard stats, auth login/session/logout, settings GET and all POST variants, and subtitle endpoint passed."
+
+backend_test_result_latest:
+  executed_at: "2026-02-08"
+  script: "/app/backend_test.py"
+  result: "33/33 passed"
+  coverage: "All review-requested provider resolver variants and backend CRUD/auth/settings/stats/parse-stream flows; source validation requires direct /api/stream file, label, and media type"
+
+agent_communication:
+  - agent: "testing"
+    message: "Backend-only verification complete: 33/33 passed against the configured public URL. Native provider resolver outputs are valid for JW Player/Video.js integration. No critical backend issues found; no frontend testing performed."
