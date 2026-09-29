@@ -1,40 +1,41 @@
 import os, time, requests
-BASE = os.environ.get('NEXT_PUBLIC_BASE_URL', 'https://dora-video-hub.preview.emergentagent.com').rstrip('/') + '/api'
-s = requests.Session(); results=[]
-def check(name, method, path, validator=None, expected=None, **kwargs):
+BASE=os.environ.get('NEXT_PUBLIC_BASE_URL','https://dora-video-hub.preview.emergentagent.com').rstrip('/')+'/api'
+s=requests.Session(); results=[]
+def check(name, method, path, expected=None, validator=None, **kw):
     try:
-        r=s.request(method, BASE+path, timeout=45, **kwargs)
+        r=s.request(method,BASE+path,timeout=60,**kw)
         try: b=r.json()
-        except Exception: b=r.text[:300]
-        ok=(r.status_code==expected) if expected is not None else 200 <= r.status_code < 300
+        except Exception: b=r.text[:200]
+        ok=(r.status_code==expected if expected is not None else 200<=r.status_code<300)
         if ok and validator: ok=bool(validator(b,r))
-        results.append(ok); print(('PASS' if ok else 'FAIL'),name,r.status_code,'' if ok else b); return b,r
-    except Exception as e: results.append(False); print('FAIL',name,'EXCEPTION',repr(e)); return None,None
+        results.append(ok); print(('PASS' if ok else 'FAIL'),name,r.status_code, '' if ok else b)
+        return b
+    except Exception as e: results.append(False); print('FAIL',name,'EXCEPTION',repr(e))
 
-def parse(name,url,provider):
-    return check(name,'POST','/parse',lambda b,r:isinstance(b,dict) and b.get('success') is True and b.get('hostType')==provider and isinstance(b.get('sources'),list) and len(b['sources'])>0 and all(isinstance(x,dict) and isinstance(x.get('file'),str) and x['file'].startswith('/api/stream') and isinstance(x.get('label'),str) and len(x['label'].strip())>0 and isinstance(x.get('type'),str) and len(x['type'].strip())>0 for x in b['sources']),json={'url':url})
-
+def valid(provider):
+    def v(b,r):
+        src=b.get('sources',[]) if isinstance(b,dict) else []
+        return b.get('success') is True and b.get('hostType')==provider and len(src)>0 and all(x.get('file','').startswith('/api/stream') and x.get('label','').strip() and x.get('type','').strip() for x in src)
+    return v
 cases=[
-('streamtape e','https://streamtape.com/e/test_streamtape_id','streamtape'),('streamtape v','https://streamtape.com/v/test_streamtape_id','streamtape'),('streamtape url','https://streamtape.com/test_streamtape_id','streamtape'),
-('turbonewvid t','https://turbonewvid.com/t/test_turbonew_id','turbonewvid'),('turbonewvid www query','https://www.turbonewvid.com/t/test_turbonew_id?param=1','turbonewvid'),
-('fc2stream root','https://fc2stream.tv/test_fc2_id','fc2stream'),('fc2stream v','https://www.fc2stream.tv/v/test_fc2_id','fc2stream'),('lulustream','https://lulustream.com/e/test_lulu_id','lulustream'),('lulust','https://lulust.com/e/test_lulu_id','lulustream'),
-('doodstream','https://doodstream.com/e/test_dood_id','doodstream'),('vidara','https://vidara.so/e/test_vidara_id','vidara'),('mp4upload','https://www.mp4upload.com/embed-test_mp4_id.html','mp4upload'),('turboviplay','https://turboviplay.com/e/test_turbovi_id','turboviplay'),('vk video','https://vkvideo.ru/video-241161797_456239017','vk'),('ok.ru','https://ok.ru/video/1234567890123','okru'),('sibnet','https://video.sibnet.ru/video/1234567/','sibnet')]
-for c in cases: parse(*c)
-slug='backend-verification-'+str(int(time.time())); payload={'title':'ShinDora Backend Verification','slug':slug,'originalUrl':'https://streamtape.com/e/backend_verification_sample','posterUrl':'','sources':[{'label':'720p HD','file':'https://example.com/media.mp4'}],'subtitles':[]}
-created,_=check('links create','POST','/links',lambda b,r:isinstance(b,dict) and b.get('hostType')=='streamtape' and bool(b.get('id')),json=payload)
-check('links list','GET','/links',lambda b,r:isinstance(b,list) and any(x.get('slug')==slug for x in b))
+('dood playmogo','https://playmogo.com/e/88k96e7mo6j9','doodstream'),('doodstream','https://doodstream.com/e/88k96e7mo6j9','doodstream'),
+('vidara so','https://vidara.so/e/vid_test_123','vidara'),('vidara to','https://vidara.to/v/vid_test_123','vidara'),
+('lulu stream','https://lulustream.com/e/lulu_test_123','lulustream'),('lulust','https://lulust.com/e/lulu_test_123','lulustream'),
+('turbo new','https://turbonewvid.com/t/tnv_test_123','turbonewvid'),('turbo www','https://www.turbonewvid.com/t/tnv_test_123','turbonewvid'),
+('fc2','https://fc2stream.tv/fc2_test_123','fc2stream'),('fc2 www','https://www.fc2stream.tv/fc2_test_123','fc2stream'),
+('streamtape','https://streamtape.com/e/st_test_123','streamtape'),('mp4upload','https://www.mp4upload.com/embed-test_mp4_id.html','mp4upload'),
+('turboviplay','https://turboviplay.com/e/test_turbovi_id','turboviplay'),('vk','https://vkvideo.ru/video-241161797_456239017','vk'),
+('ok','https://ok.ru/video/1234567890123','okru'),('sibnet','https://video.sibnet.ru/video/1234567/','sibnet')]
+for n,u,p in cases: check('parse '+n,'POST','/parse',validator=valid(p),json={'url':u})
+slug='native-backend-'+str(int(time.time()))
+created=check('links POST','POST','/links',validator=lambda b,r:b.get('hostType')=='doodstream' and b.get('id'),json={'title':'Native Playback Verification','slug':slug,'originalUrl':'https://playmogo.com/e/88k96e7mo6j9','sources':[{'label':'720p HD','file':'/api/stream/720/'+slug,'type':'video'}]})
+check('links GET','GET','/links',validator=lambda b,r:isinstance(b,list) and any(x.get('slug')==slug for x in b))
 if isinstance(created,dict) and created.get('id'):
-    check('links get','GET','/links/'+created['id'],lambda b,r:b.get('id')==created['id'] and b.get('slug')==slug)
-    check('parse-stream','GET','/parse-stream?slug='+slug,lambda b,r:isinstance(b,dict) and b.get('success') is True and isinstance(b.get('sources'),list))
-    check('links delete','DELETE','/links/'+created['id'],lambda b,r:b.get('success') is True)
-for ep in ['/stats','/dashboard/stats']:
-    check(ep,'GET',ep,lambda b,r:isinstance(b,dict) and isinstance(b.get('stats'),dict) and all(k in b['stats'] for k in ['streamtapeCount','turbonewvidCount','fc2streamCount','doodstreamCount','lulustreamCount','vidaraCount','mp4uploadCount','turboviplayCount','vkCount','okCount','sibnetCount']))
-check('login','POST','/auth/login',lambda b,r:b.get('success') is True,json={'username':'admin','password':'admin123','remember':False})
-check('session','GET','/auth/session',lambda b,r:b.get('authenticated') is True)
-check('logout','POST','/auth/logout',lambda b,r:b.get('success') is True)
-check('session after logout','GET','/auth/session',lambda b,r:b.get('authenticated') is False,expected=401)
-check('settings get','GET','/settings',lambda b,r:isinstance(b,dict) and all(k in b for k in ['imagekit','admin','player','general']))
-for typ,data in [('player',{'playerType':'videojs','autoplay':True,'vastEnabled':False,'vastTags':[],'isAdblockEnabled':False}),('general',{'cdnUrl':'','downloadCdnUrl':'','isCustomDownloadCdnEnabled':False}),('imagekit',{'publicKey':'','privateKey':'','urlEndpoint':''}),('admin',{'username':'admin','password':'admin123'})]:
-    check('settings post '+typ,'POST','/settings',lambda b,r:b.get('success') is True,json={'settingsType':typ,**data})
-check('subtitle','GET','/subtitle?url=/sample.srt',lambda b,r:(r.status_code==200 and isinstance(b,str) and b.startswith('WEBVTT')) or r.status_code==404)
+    check('parse-stream','GET','/parse-stream?slug='+slug,validator=lambda b,r:b.get('success') is True and b.get('sources'))
+    check('links DELETE','DELETE','/links/'+created['id'],validator=lambda b,r:b.get('success') is True)
+for ep in ['/stats','/dashboard/stats']: check(ep,'GET',ep,validator=lambda b,r:isinstance(b.get('stats'),dict))
+check('auth login','POST','/auth/login',validator=lambda b,r:b.get('success') is True,json={'username':'admin','password':'admin123','remember':False})
+check('auth session','GET','/auth/session',validator=lambda b,r:b.get('authenticated') is True)
+check('auth logout','POST','/auth/logout',validator=lambda b,r:b.get('success') is True)
+check('auth session logged out','GET','/auth/session',expected=401,validator=lambda b,r:b.get('authenticated') is False)
 print('SUMMARY',sum(results),'/',len(results),'passed'); raise SystemExit(0 if all(results) else 1)

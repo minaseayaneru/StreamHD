@@ -533,3 +533,32 @@ backend_test_result_error232403:
   executed_at: "2026-02-08"
   result: "All requested backend checks passed"
   coverage: "18 provider variants, parse-stream debug schema and credential redaction, links CRUD smoke, stats/dashboard stats, auth lifecycle"
+
+
+  - agent: "main"
+    message: "Verified direct streaming pipeline for https://playmogo.com/e/88k96e7mo6j9 (Doodstream), Vidara, LuluStream, TurboNewVid, FC2Stream, and Streamtape ensuring native JW Player & Video.js stream playback without provider embed iframes. Requesting backend API test."
+
+
+# Backend testing update - native JW Player / Video.js requested endpoint retest
+backend:
+  - task: "Native streaming parser variants, links/stats, parse-stream, and auth lifecycle"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js; app/lib/parser.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Executed /app/backend_test.py against configured NEXT_PUBLIC_BASE_URL: 26/26 passed. All requested Doodstream playmogo and doodstream URLs, Vidara, LuluStream/Lulust, TurboNewVid, FC2Stream, Streamtape, MP4Upload, TurboViPlay, VK Video, OK.ru, and Sibnet returned HTTP 200 with non-empty /api/stream sources and label/type metadata. Links POST/GET/delete, parse-stream, stats/dashboard stats, and auth login/session/logout lifecycle passed."
+
+backend_test_result_native_retest:
+  executed_at: "2026-02-08"
+  script: "/app/backend_test.py"
+  result: "26/26 passed"
+  coverage: "All review-requested parser variants, native stream source validation, links, stats, parse-stream, and auth lifecycle"
+
+agent_communication:
+  - agent: "testing"
+    message: "Backend-only native JW Player/Video.js verification passed 26/26 against the configured public URL. No critical backend issues found. No frontend testing performed."

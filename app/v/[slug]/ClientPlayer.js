@@ -35,9 +35,7 @@ export default function ClientPlayer({
   const [videoData, setVideoData] = useState(video);
   const [sources, setSources] = useState(video?.sources || []);
   const [subtitles, setSubtitles] = useState(video?.subtitles || []);
-  const [embedMode, setEmbedMode] = useState(
-    video?.type === 'embed' || video?.sources?.[0]?.type === 'embed'
-  );
+  const [embedMode, setEmbedMode] = useState(false);
 
   const fallbackToEmbed = useCallback(() => {
     const rawEmbed = videoData?.embedUrl || video?.embedUrl || (sources[0]?.type === 'embed' ? sources[0].file : '') || videoData?.originalUrl || video?.originalUrl || '';
@@ -889,7 +887,7 @@ export default function ClientPlayer({
   // INISIALISASI PEMUTAR VIDEO (JW PLAYER & VIDEO.JS DENGAN SMART TV SUPPORT)
   // =========================================================================
   useEffect(() => {
-    if (initializedRef.current || !scriptsReady || !activeSourceFile || embedMode) return;
+    if (initializedRef.current || !scriptsReady || !activeSourceFile) return;
 
     // A. JW PLAYER SETUP
     if (playerEngine === 'jwplayer' && window.jwplayer && jwContainerRef.current) {
