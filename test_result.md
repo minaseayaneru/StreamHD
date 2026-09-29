@@ -562,3 +562,33 @@ backend_test_result_native_retest:
 agent_communication:
   - agent: "testing"
     message: "Backend-only native JW Player/Video.js verification passed 26/26 against the configured public URL. No critical backend issues found. No frontend testing performed."
+
+
+  - agent: "main"
+    message: "Fixed runtime NotFoundError removeChild and third-party ad-syncing console errors (3lift/bidgx/connatix) by isolating player lifecycle with unmanaged playerContainerRef and adding global error catcher in app/layout.js. Re-testing backend APIs."
+
+
+
+# Backend testing update - runtime removeChild and ad-syncing fix retest
+backend:
+  - task: "Native streaming parser variants, links/stats, parse-stream debug, and auth lifecycle"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js; app/lib/parser.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Backend-only verification against NEXT_PUBLIC_BASE_URL passed 26/26 assertions. POST /api/parse passed for Doodstream playmogo.com and doodstream.com, Vidara, LuluStream/Lulust, TurboNewVid, FC2Stream, Streamtape, MP4Upload, TurboViPlay, VK Video, OK.ru, and Sibnet; sources contained non-empty /api/stream files with labels and media types. Links POST/GET/DELETE, /api/stats, /api/dashboard/stats, and auth login/session/logout lifecycle passed. Additional parse-stream?slug=...&debug=1 check returned all diagnostic fields with no credential leakage."
+
+backend_test_result_runtime_fix:
+  executed_at: "2026-02-08"
+  script: "/app/backend_test.py"
+  result: "26/26 passed; debug diagnostic check passed"
+  coverage: "All review-requested parser variants, parse-stream, parse-stream debug redaction, links POST+GET, stats/dashboard stats, and auth lifecycle"
+
+agent_communication:
+  - agent: "testing"
+    message: "Backend retest complete after runtime removeChild and ad-syncing changes: 26/26 automated assertions passed against the configured public URL. Explicit debug endpoint validation passed with required diagnostic keys and no credential leakage. No critical backend issues found; no frontend testing performed."

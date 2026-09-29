@@ -20,8 +20,7 @@ export default function ClientPlayer({
   isAdblockEnabled = false,
   cdnUrl = ''
 }) {
-  const videoRef = useRef(null);
-  const jwContainerRef = useRef(null);
+  const playerContainerRef = useRef(null);
   
   const [playerEngine] = useState(defaultPlayerType || 'jwplayer');
   const [scriptsReady, setScriptsReady] = useState(false);
@@ -887,11 +886,19 @@ export default function ClientPlayer({
   // INISIALISASI PEMUTAR VIDEO (JW PLAYER & VIDEO.JS DENGAN SMART TV SUPPORT)
   // =========================================================================
   useEffect(() => {
-    if (initializedRef.current || !scriptsReady || !activeSourceFile) return;
+    if (!scriptsReady || !activeSourceFile || !playerContainerRef.current) return;
+
+    // Bersihkan container secara aman tanpa memicu NotFoundError React
+    playerContainerRef.current.innerHTML = '';
 
     // A. JW PLAYER SETUP
-    if (playerEngine === 'jwplayer' && window.jwplayer && jwContainerRef.current) {
+    if (playerEngine === 'jwplayer' && window.jwplayer) {
       try {
+        const jwDiv = document.createElement('div');
+        jwDiv.id = 'jwplayer-container';
+        jwDiv.className = 'w-full h-full';
+        playerContainerRef.current.appendChild(jwDiv);
+
         const jwSources = sources.map(s => {
           const streamUrl = getCdnStreamUrl(s.file);
           const isHls = streamUrl.includes('.m3u8') || s.type?.includes('mpegURL') || s.type?.includes('hls');
@@ -902,7 +909,7 @@ export default function ClientPlayer({
           };
         });
 
-        const player = window.jwplayer(jwContainerRef.current).setup({
+        const player = window.jwplayer(jwDiv).setup({
           playlist: [{
             title: videoData?.title,
             image: videoData?.posterUrl,
@@ -1011,8 +1018,28 @@ export default function ClientPlayer({
     }
 
     // B. VIDEO.JS SETUP
-    if (videoRef.current && window.videojs) {
+    if (window.videojs) {
       try {
+        const videoEl = document.createElement('video');
+        videoEl.className = 'video-js vjs-big-play-centered w-full h-full';
+        videoEl.setAttribute('playsinline', '');
+        videoEl.setAttribute('controls', '');
+        videoEl.setAttribute('crossorigin', 'anonymous');
+        if (videoData?.posterUrl) {
+          videoEl.setAttribute('poster', videoData.posterUrl);
+        }
+
+        subtitles.forEach((sub, idx) => {
+          const track = document.createElement('track');
+          track.kind = 'captions';
+          track.src = formatSubtitleUrl(sub.file);
+          track.label = sub.label || `Subtitle ${idx + 1}`;
+          if (idx === 0) track.default = true;
+          videoEl.appendChild(track);
+        });
+
+        playerContainerRef.current.appendChild(videoEl);
+
         const vjsSources = sources.map(s => {
           const streamUrl = getCdnStreamUrl(s.file);
           const isHls = streamUrl.includes('.m3u8') || s.type?.includes('mpegURL') || s.type?.includes('hls');
@@ -1023,7 +1050,7 @@ export default function ClientPlayer({
           };
         });
 
-        const player = window.videojs(videoRef.current, {
+        const player = window.videojs(videoEl, {
           autoplay: autoplay ? true : false,
           muted: false,
           controls: true,
@@ -1188,31 +1215,8 @@ export default function ClientPlayer({
               sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-popups"
             />
           </div>
-        ) : playerEngine !== 'jwplayer' ? (
-          <div data-vjs-player className="w-full h-full">
-            <video
-              ref={videoRef}
-              className="video-js vjs-big-play-centered w-full h-full"
-              crossOrigin="anonymous"
-              playsInline
-              controls
-              poster={videoData?.posterUrl || ''}
-            >
-              {subtitles.map((sub, idx) => (
-                <track
-                  key={idx}
-                  kind="captions"
-                  src={formatSubtitleUrl(sub.file)}
-                  label={sub.label || `Subtitle ${idx + 1}`}
-                  default={idx === 0}
-                />
-              ))}
-            </video>
-          </div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div ref={jwContainerRef} id="jwplayer-container" className="w-full h-full" />
-          </div>
+          <div ref={playerContainerRef} className="w-full h-full flex items-center justify-center bg-black" />
         )}
 
         {/* ======================================================
