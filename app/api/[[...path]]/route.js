@@ -396,11 +396,17 @@ async function handleRoute(request, { params }) {
       if (!body.url) {
         return handleCORS(NextResponse.json({ error: 'URL is required' }, { status: 400 }));
       }
+      const isDebug = searchParams.get('debug') === '1' || body.debug === '1' || body.debug === true;
       try {
-        const extracted = await extractVideoStreams(body.url);
+        const extracted = await extractVideoStreams(body.url, '', isDebug);
         return handleCORS(NextResponse.json(extracted));
       } catch (err) {
-        return handleCORS(NextResponse.json({ error: err.message }, { status: 422 }));
+        return handleCORS(NextResponse.json({
+          success: false,
+          error: err.message,
+          provider: detectProvider(body.url),
+          code: 'PARSER_FAILED'
+        }, { status: 422 }));
       }
     }
 
@@ -410,6 +416,7 @@ async function handleRoute(request, { params }) {
     if (route === '/parse-stream' && method === 'GET') {
       const slug = searchParams.get('slug');
       const force = searchParams.get('force') === '1' || searchParams.get('refresh') === '1';
+      const isDebug = searchParams.get('debug') === '1';
 
       if (!slug) {
         return handleCORS(NextResponse.json({ error: 'Slug parameter is required' }, { status: 400 }));
@@ -445,11 +452,31 @@ async function handleRoute(request, { params }) {
         };
       };
 
+      if (isDebug) {
+        const firstSource = link.sources?.[0]?.file || '';
+        const isEmbedType = link.type === 'embed' || link.sources?.[0]?.type === 'embed';
+        return handleCORS(NextResponse.json({
+          provider: link.hostType || detectProvider(link.originalUrl),
+          detectedUrl: link.originalUrl,
+          finalUrl: firstSource || link.embedUrl || link.originalUrl,
+          status: 200,
+          contentType: isEmbedType ? 'text/html' : 'video/mp4',
+          type: isEmbedType ? 'embed' : 'video',
+          embedUrl: link.embedUrl || link.originalUrl,
+          streamUrl: isEmbedType ? null : (firstSource ? formatSourceWithCdn({ file: firstSource }).file : null),
+          expiresAt: null,
+          requiredReferer: link.hostType === 'vk' ? 'https://vk.com/' : (link.hostType === 'okru' ? 'https://ok.ru/' : 'https://streamtape.com/'),
+          error: null
+        }));
+      }
+
       // If not forced and sources already exist, return them
       if (!force && Array.isArray(link.sources) && link.sources.length > 0) {
         return handleCORS(NextResponse.json({
           success: true,
           refreshed: false,
+          type: link.type || (link.sources?.[0]?.type === 'embed' ? 'embed' : 'video'),
+          embedUrl: link.embedUrl || '',
           sources: link.sources.map(formatSourceWithCdn),
           subtitles: (link.subtitles || []).map(s => ({
             ...s,
@@ -461,14 +488,16 @@ async function handleRoute(request, { params }) {
         }));
       }
 
-      // Re-parse fresh stream token from VK, OK.ru, or Sibnet
+      // Re-parse fresh stream token from provider
       try {
         console.log(`[parse-stream] REFRESH TOKEN for slug=${slug} (${link.originalUrl})`);
-        const freshData = await extractVideoStreams(link.originalUrl);
+        const freshData = await extractVideoStreams(link.originalUrl, '', isDebug);
 
         if (Array.isArray(freshData.sources) && freshData.sources.length > 0) {
           const updateDoc = {
             sources: freshData.sources,
+            type: freshData.type || 'video',
+            embedUrl: freshData.embedUrl || '',
             updatedAt: new Date()
           };
           if (freshData.posterUrl && !link.posterUrl) {
@@ -479,11 +508,12 @@ async function handleRoute(request, { params }) {
           }
 
           await dbInstance.collection('links').updateOne({ slug }, { $set: updateDoc });
-          console.log(`[parse-stream] Fresh token saved into Turso for slug=${slug}`);
 
           return handleCORS(NextResponse.json({
             success: true,
             refreshed: true,
+            type: freshData.type || 'video',
+            embedUrl: freshData.embedUrl || '',
             sources: freshData.sources.map(formatSourceWithCdn),
             subtitles: (link.subtitles || []).map(s => ({
               ...s,
@@ -491,7 +521,8 @@ async function handleRoute(request, { params }) {
             })),
             title: link.title || freshData.title,
             posterUrl: link.posterUrl || freshData.posterUrl || '',
-            hostType: link.hostType || freshData.hostType || 'vk'
+            hostType: link.hostType || freshData.hostType || 'vk',
+            ...(isDebug && freshData.debugInfo ? { debugInfo: freshData.debugInfo } : {})
           }));
         }
       } catch (extractErr) {
@@ -503,6 +534,8 @@ async function handleRoute(request, { params }) {
         success: true,
         refreshed: false,
         fallback: true,
+        type: link.type || (link.sources?.[0]?.type === 'embed' ? 'embed' : 'video'),
+        embedUrl: link.embedUrl || '',
         sources: (Array.isArray(link.sources) ? link.sources : []).map(formatSourceWithCdn),
         subtitles: (link.subtitles || []).map(s => ({
           ...s,

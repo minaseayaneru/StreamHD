@@ -35,6 +35,20 @@ export default function ClientPlayer({
   const [videoData, setVideoData] = useState(video);
   const [sources, setSources] = useState(video?.sources || []);
   const [subtitles, setSubtitles] = useState(video?.subtitles || []);
+  const [embedMode, setEmbedMode] = useState(
+    video?.type === 'embed' || video?.sources?.[0]?.type === 'embed'
+  );
+
+  const fallbackToEmbed = useCallback(() => {
+    const rawEmbed = videoData?.embedUrl || video?.embedUrl || (sources[0]?.type === 'embed' ? sources[0].file : '') || videoData?.originalUrl || video?.originalUrl || '';
+    if (rawEmbed) {
+      console.log('[Player Recovery] Switching to protected embed player mode for Error 232403 protection');
+      setEmbedMode(true);
+      setRecoveryMessage('Memutar via Protected Player Mode');
+      setRecoverySuccess(true);
+      setTimeout(() => setRecoveryMessage(null), 3500);
+    }
+  }, [videoData, video, sources]);
 
   // Detect Smart TV Device
   useEffect(() => {
@@ -875,7 +889,7 @@ export default function ClientPlayer({
   // INISIALISASI PEMUTAR VIDEO (JW PLAYER & VIDEO.JS DENGAN SMART TV SUPPORT)
   // =========================================================================
   useEffect(() => {
-    if (initializedRef.current || !scriptsReady || !activeSourceFile) return;
+    if (initializedRef.current || !scriptsReady || !activeSourceFile || embedMode) return;
 
     // A. JW PLAYER SETUP
     if (playerEngine === 'jwplayer' && window.jwplayer && jwContainerRef.current) {
@@ -933,21 +947,36 @@ export default function ClientPlayer({
         });
 
         // -------------------------------------------------------------
-        // AUTO TOKEN EXPIRED RECOVERY LISTENERS (DIPICU HANYA SAAT ERROR/UNPLAYABLE)
+        // AUTO TOKEN EXPIRED & ERROR 232403 PROTECTED CONTENT RECOVERY
         // -------------------------------------------------------------
         player.on('error', (err) => {
           console.warn('[JW Player Error Event]:', err);
-          recoverExpiredToken('jwplayer_error_event');
+          const errStr = JSON.stringify(err || {}).toLowerCase();
+          if (errStr.includes('232403') || errStr.includes('224003') || errStr.includes('protected') || err?.code === 232403 || err?.code === 224003) {
+            fallbackToEmbed();
+          } else {
+            recoverExpiredToken('jwplayer_error_event');
+          }
         });
 
         player.on('setupError', (err) => {
           console.warn('[JW Player SetupError Event]:', err);
-          recoverExpiredToken('jwplayer_setup_error');
+          const errStr = JSON.stringify(err || {}).toLowerCase();
+          if (errStr.includes('232403') || errStr.includes('224003') || errStr.includes('protected') || err?.code === 232403 || err?.code === 224003) {
+            fallbackToEmbed();
+          } else {
+            recoverExpiredToken('jwplayer_setup_error');
+          }
         });
 
         player.on('mediaError', (err) => {
           console.warn('[JW Player MediaError Event]:', err);
-          recoverExpiredToken('jwplayer_media_error');
+          const errStr = JSON.stringify(err || {}).toLowerCase();
+          if (errStr.includes('232403') || errStr.includes('224003') || errStr.includes('protected') || err?.code === 232403 || err?.code === 224003) {
+            fallbackToEmbed();
+          } else {
+            recoverExpiredToken('jwplayer_media_error');
+          }
         });
 
         // Sinyal Selesai & Tracking Posisi
@@ -1028,19 +1057,23 @@ export default function ClientPlayer({
         }
 
         // -------------------------------------------------------------
-        // AUTO TOKEN EXPIRED RECOVERY LISTENERS (DIPICU HANYA SAAT ERROR)
+        // AUTO TOKEN EXPIRED & ERROR 232403 PROTECTED CONTENT RECOVERY
         // -------------------------------------------------------------
         player.on('error', () => {
           const vjsErr = player.error();
           console.warn('[Video.js Error Event]:', vjsErr);
-          recoverExpiredToken('videojs_error_event');
+          if (vjsErr?.code === 4 || vjsErr?.code === 2) {
+            fallbackToEmbed();
+          } else {
+            recoverExpiredToken('videojs_error_event');
+          }
         });
 
         const mediaEl = player.el()?.querySelector('video');
         if (mediaEl) {
           mediaEl.addEventListener('error', (e) => {
             console.warn('[HTML5 Video Native Error]:', e);
-            recoverExpiredToken('html5_native_error');
+            fallbackToEmbed();
           });
         }
 
@@ -1146,7 +1179,18 @@ export default function ClientPlayer({
       `}} />
 
       <div className="w-full h-full relative">
-        {playerEngine !== 'jwplayer' && (
+        {embedMode ? (
+          <div className="w-full h-full flex items-center justify-center bg-black">
+            <iframe
+              src={videoData?.embedUrl || video?.embedUrl || (sources[0]?.type === 'embed' ? sources[0].file : '') || videoData?.originalUrl || video?.originalUrl || ''}
+              className="w-full h-full border-0 absolute inset-0"
+              allowFullScreen
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              title={videoData?.title || 'Video Player'}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation allow-popups"
+            />
+          </div>
+        ) : playerEngine !== 'jwplayer' ? (
           <div data-vjs-player className="w-full h-full">
             <video
               ref={videoRef}
@@ -1167,9 +1211,7 @@ export default function ClientPlayer({
               ))}
             </video>
           </div>
-        )}
-
-        {playerEngine === 'jwplayer' && (
+        ) : (
           <div className="w-full h-full flex items-center justify-center">
             <div ref={jwContainerRef} id="jwplayer-container" className="w-full h-full" />
           </div>

@@ -505,3 +505,31 @@ backend_test_result_latest:
 agent_communication:
   - agent: "testing"
     message: "Backend-only verification complete: 33/33 passed against the configured public URL. Native provider resolver outputs are valid for JW Player/Video.js integration. No critical backend issues found; no frontend testing performed."
+
+
+  - agent: "main"
+    message: "Resolved Video Player Error 232403: Implemented HEAD Content-Type verification (preventing text/html from masquerading as video/mp4), token expiry calculation, sanitized provider referer headers, debug endpoint /api/parse-stream?debug=1 (redacting sensitive tokens), and automatic protected player recovery in ClientPlayer.js. Requesting backend test verification."
+
+
+# Backend testing update - Video Player Error 232403 fix and debug resolver verification
+backend:
+  - task: "Video Player Error 232403 fix, provider resolvers, parse-stream debug, links/stats/auth"
+    implemented: true
+    working: true
+    file: "app/api/[[...path]]/route.js; app/lib/parser.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "Backend-only verification against NEXT_PUBLIC_BASE_URL passed. All 18 requested provider URL variants returned HTTP 200, correct provider, top-level type video/embed, non-empty sources, embedUrl where applicable, and no HTML masquerading as a video source; invalid placeholder IDs correctly resolved to embed responses. parse-stream?slug=...&debug=1 returned all requested diagnostic fields (provider, detectedUrl, finalUrl, status, contentType, type, embedUrl, streamUrl, expiresAt, requiredReferer, error) with no credential leakage. Links POST/GET, stats/dashboard stats, and auth login/session/logout passed."
+
+agent_communication:
+  - agent: "testing"
+    message: "Backend verification complete for Error 232403 fix: provider resolver matrix, debug parse-stream response, links/stats, and auth lifecycle all passed against the public deployment. No critical backend issues found; no frontend testing performed."
+
+backend_test_result_error232403:
+  executed_at: "2026-02-08"
+  result: "All requested backend checks passed"
+  coverage: "18 provider variants, parse-stream debug schema and credential redaction, links CRUD smoke, stats/dashboard stats, auth lifecycle"
